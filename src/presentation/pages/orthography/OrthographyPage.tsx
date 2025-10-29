@@ -1,6 +1,8 @@
 import { useState } from "react"
+import { orthographyUseCase } from "../../../core"
 import {
   GptMessage,
+  GptOrthographyMessage,
   MyMessage,
   TextMessageBox,
   TypingLoader,
@@ -9,6 +11,11 @@ import {
 interface Message {
   text: string;
   isGpt: boolean;
+  info?: {
+    userScore: number;
+    errors: string[];
+    message: string;
+  };
 }
 
 export const OrthographyPage = () => {
@@ -19,11 +26,17 @@ export const OrthographyPage = () => {
     setIsLoading(true);
     setMessages((prev) => [...prev, { text: text, isGpt: false }]);
 
-    //TODO: UseCase
+    const { ok, userScore, errors, message } = await orthographyUseCase(text);
+    if (!ok) {
+      setMessages((prev) => [...prev, { text: message, isGpt: true }]);
+    } else {
+      setMessages((prev) => [
+        ...prev,
+        { text: message, isGpt: true, info: { userScore, errors, message } },
+      ]);
+    }
 
     setIsLoading(false);
-
-    // Todo: Añadir el mensaje de isGPT en true
   };
 
   return (
@@ -35,7 +48,12 @@ export const OrthographyPage = () => {
 
           {messages.map((message, index) =>
             message.isGpt ? (
-              <GptMessage key={index} text="Esto es de OpenAI" />
+              <GptOrthographyMessage
+                key={index}
+                userScore={message.info?.userScore || 0}
+                errors={message.info?.errors || []}
+                message={message.info?.message || ""}
+              />
             ) : (
               <MyMessage key={index} text={message.text} />
             )
